@@ -1,4 +1,4 @@
-{    "name" : "Loïc Faure-Lacroix"
+{    "name" : "couchdb-sync"
    , "description": "A script that will let you setup revisions for couchdb designs"
    , "keywords": ["couchdb"]
    , "email" : "lamerstar@gmail.com"
@@ -6,4 +6,8 @@
    , "bin": {"cdbr": "./index.js"}
    , "version": "0.0.0"
    , "files": ["./src/", "./index.js", "./template"]
+   , "dependencies" : {
+        "yargs": "1.3.x"
+        , "nano": "5.10.x"
+   }
 }
