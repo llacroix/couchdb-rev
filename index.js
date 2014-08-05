@@ -8,9 +8,9 @@ var yargs = require('yargs')
         .describe("dir", "Directory where revision script are stored")
 
         .argv
-    , list = require("./list")
-    , create = require("./create")
-    , sync = require("./sync")
+    , list = require("./src/list")
+    , create = require("./src/create")
+    , sync = require("./src/sync")
 
 
 if (argv.dir.slice(-1) != "/") {

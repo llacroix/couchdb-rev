@@ -1,4 +1,4 @@
-var script = require("./template/revision")
+var script = require("../template/revision")
     , script_t = script.toString()
     , fs = require("fs")
 

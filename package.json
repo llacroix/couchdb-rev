@@ -1,0 +1,9 @@
+{    "name" : "Loïc Faure-Lacroix"
+   , "description": "A script that will let you setup revisions for couchdb designs"
+   , "keywords": ["couchdb"]
+   , "email" : "lamerstar@gmail.com"
+   , "url" : "http://blog.vosnax.ru"
+   , "bin": {"cdbr": "./index.js"}
+   , "version": "0.0.0"
+   , "files": ["./src/", "./index.js", "./template"]
+}
