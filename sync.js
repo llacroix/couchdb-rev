@@ -1,151 +1,121 @@
 var nano = require("nano")
-    , db = nano("http://localhost:5984/")
     , fs = require("fs")
-    , projects = db.use("projects");
+    , Context = require("./context")
+    , Design = require("./design")
+    , Storage = require("./storage")
 
+function sync(uri, database, revpath, tg_revision) {
 
-function Context(name) {
-    this.name = name;
-};
+    var db = nano(uri)
+        , projects = db.use(database)
 
-Context.prototype.up = function (func) {
-    this.func_up = func;
-};
+    console.log(tg_revision)
 
-Context.prototype.down = function (func) {
-    this.func_down = func;
-};
+    projects.get("dbconfig", function (err, data) {
+        console.log(target_revision)
 
-function Design(name) {
-    this.name = name;
-    this.views = {}; 
-};
+        var revisions = fs.readdirSync(revpath).sort() 
+            , target_revision = tg_revision || revisions.slice(-1)[0]
+            , revision = data.revision
+            , revision_index = revisions.indexOf(revision) 
+            , target_revision_index = revisions.indexOf(target_revision)
+            , storage = new Storage()
+            , upgrades = undefined
+            , downgrades = undefined
 
-Design.prototype.getId = function () {
-    return "_design/" + this.name;
-};
+        if (revision == undefined || revision_index < 0) {
+            revision_index = 0
+            revision = revisions[revision_index]
+        }
 
-Design.prototype.toObject = function () {
-    var obj = {
-        _id: "_design/" + this.name,
-        language: "javascript",
-        views: this.views
-    };
+        console.log("Current revision '" + revision + "'")
+        console.log("target_revision " + target_revision)
+        console.log("target_revision_index " + target_revision_index)
+        console.log(revisions)
 
-    return obj;
-};
+        upgrades = revisions.map(function (path, index) {
+            if (index <= revision_index) {
+                var ctx = new Context(path)
+                changeset = require(revpath + path)
+                changeset(ctx)
+                return ctx;
+            } else {
+                return undefined;
+            }
+        })
+        .filter(function (k) { return k != undefined })
 
+        downgrades = revisions.map(function (path, index) {
+            if (index <= revision_index && index > target_revision_index && target_revision_index >= 0) {
+                var ctx = new Context(path)
+                changeset = require(revpath + path)
+                changeset(ctx)
+                return ctx;
+            } else {
+                return undefined;
+            }
+        })
+        .filter(function (k) { return k != undefined })
+        .reverse()
 
-Design.prototype.toString = function () {
-    return JSON.stringify(this.toObject());
-};
+        console.log(upgrades)
+        console.log(downgrades)
 
-Design.prototype.setView = function (name, mapfunc, reducefunc) {
-    this.views[name] = {map: mapfunc.toString()};
+        upgrades.forEach(function (ctx) {
+            if (ctx.func_up)
+                ctx.func_up(storage)
+        })
 
-    if (reducefunc) {
-        this.views[name]["reduce"] = reducefunc.toString();
-    }
+        downgrades.forEach(function (ctx) {
+            if (ctx.func_down)
+                ctx.func_down(storage)
+        })
 
-    return this;
-};
+        function insertDoc(doc) {
+            projects.get(doc.getId(), function(err, docs, headers) {
+                var obj = doc.toObject()
 
-Design.prototype.removeView = function (name) {
-    delete this.views[name]; 
+                if (docs) {
+                    obj._rev = docs._rev;
+                    projects.insert(obj, obj._id, function (err, body, head) {
+                        console.log("ok updated: " + obj._id)
+                    })
+                } else {
+                    projects.insert(obj, obj._id, function (err, body, head) {
+                        console.log("ok inserted: " + obj._id)
+                    })
+                }
+            })
+        }
 
-    return this;
+        for (val in storage.designs) {
+            var doc = storage.designs[val]
+            insertDoc(doc)
+        }
+
+        storage.deleted.forEach(function (val) {
+            projects.get("_design/" + val, function (err, doc, head) {
+                if (doc)
+                    var obj = {
+                        _id: doc._id,
+                        _rev: doc._rev,
+                        _deleted: true
+                    }
+
+                    projects.insert(obj, "_design/" + val)
+            })
+        })
+
+        projects.insert({
+            _id: "dbconfig",
+            _rev: data._rev,
+            revision: target_revision
+        }, "dbconfig")
+
+        console.log(storage)
+    })
 }
 
-Design.prototype.removeValidateDocUpdate = function () {
+module.exports = sync
 
-    return this;
-};
-
-Design.prototype.setValidateDocUpdate = function (func) {
-
-    return this;
-};
-
-function Storage () {
-    this.designs = {};
-    this.deleted = [];
-};
-
-Storage.prototype.get = function (name) {
-    return this.designs[name];
-};
-
-Storage.prototype.create = function (name) {
-    if (this.deleted.indexOf(name) >= 0)
-        this.deleted.splice(this.deleted.indexOf(name), 1);
-
-    this.designs[name] = new Design(name);
-    return this.designs[name];
-};
-
-Storage.prototype.remove = function (name) {
-    this.deleted.push(name);
-    delete this.designs[name];
-};
-
-
-projects.get("dbconfig", function (err, data) {
-    var revision = data.revision || "init"
-        , storage = new Storage()
-        , contexts = [];
-
-
-    console.log("Current revision '" + revision + "'"); 
-
-    var revisions = fs.readdirSync("./revs").sort();
-
-    revisions.forEach(function (path) {
-        var ctx = new Context(path);
-        changeset = require("./revs/" + path);
-
-        changeset(ctx);
-
-        contexts.push(ctx);
-
-    });
-
-    contexts.forEach(function (ctx) {
-        if (ctx.func_up)
-            ctx.func_up(storage);
-
-        if (ctx.func_down)
-            ctx.func_down(storage);
-    });
-
-    function insertDoc(doc) {
-        projects.get(doc.getId(), function(err, docs, headers) {
-            var obj = doc.toObject();
-
-            if (docs) {
-                obj._rev = docs._rev;
-                projects.insert(obj, obj._id, function (err, body, head) {
-                    console.log("ok updated: " + obj._id);
-                });
-            } else {
-                projects.insert(obj, obj._id, function (err, body, head) {
-                    console.log("ok inserted: " + obj._id);
-                });
-            }
-        });
-
-    };
-
-    for (val in storage.designs) {
-        var doc = storage.designs[val];
-        insertDoc(doc); 
-    }
-
-    storage.deleted.forEach(function (val) {
-        projects.get("_design/" + val, function (err, doc, head) {
-            if (doc)
-                projects.insert({_id: doc._id, _rev: doc._rev, _deleted: true}, "_design/" + val);
-        });
-    });
-
-    console.log(storage);
-});
+//sync("http://localhost:5984/", "projects", "./revs/", "2014-07-23T14:06:46.816Z@Second.js")

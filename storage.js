@@ -1,3 +1,5 @@
+var Design = require("./design")
+
 function Storage () {
     this.designs = {};
     this.deleted = [];
