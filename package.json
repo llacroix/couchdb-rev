@@ -3,9 +3,9 @@
    , "keywords": ["couchdb"]
    , "email" : "lamerstar@gmail.com"
    , "url" : "http://blog.vosnax.ru"
-   , "bin": {"cdbr": "./index.js"}
+   , "main": "./index.js"
+   , "bin": {"cdbr": "./bin/cdbr.js"}
    , "version": "0.0.0"
-   , "files": ["./src/", "./index.js", "./template"]
    , "dependencies" : {
         "yargs": "1.3.x"
         , "nano": "5.10.x"

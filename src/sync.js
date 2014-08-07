@@ -1,5 +1,7 @@
 var nano = require("nano")
+    , colors = require("colors")
     , fs = require("fs")
+    , npath = require("path")
     , Context = require("./context")
     , Design = require("./design")
     , Storage = require("./storage")
@@ -9,11 +11,17 @@ function sync(uri, database, revpath, tg_revision) {
     var db = nano(uri)
         , projects = db.use(database)
 
+    
+    if (!fs.existsSync(revpath)) {
+        console.log("Revision directory doesn't exists".red)
+        process.exit(1)
+    }
+
     // TODO remove
-    console.log(tg_revision)
+    // console.log(tg_revision)
 
     projects.get("dbconfig", function (err, data) {
-        console.log(target_revision)
+        // console.log(target_revision)
 
         var revisions = fs.readdirSync(revpath).sort() 
             , target_revision = tg_revision || revisions.slice(-1)[0]
@@ -30,15 +38,15 @@ function sync(uri, database, revpath, tg_revision) {
         }
 
         // TODO remove
-        console.log("Current revision '" + revision + "'")
-        console.log("target_revision " + target_revision)
-        console.log("target_revision_index " + target_revision_index)
-        console.log(revisions)
+        // console.log("Current revision '" + revision + "'")
+        // console.log("target_revision " + target_revision)
+        // console.log("target_revision_index " + target_revision_index)
+        // console.log(revisions)
 
         upgrades = revisions.map(function (path, index) {
             if (index <= revision_index) {
                 var ctx = new Context(path)
-                changeset = require(revpath + path)
+                changeset = require(npath.resolve(revpath) + "/" + path)
                 changeset(ctx)
                 return ctx;
             } else {
@@ -50,7 +58,7 @@ function sync(uri, database, revpath, tg_revision) {
         downgrades = revisions.map(function (path, index) {
             if (index <= revision_index && index > target_revision_index && target_revision_index >= 0) {
                 var ctx = new Context(path)
-                changeset = require(revpath + path)
+                changeset = require(npath.resolve(revpath) + "/" + path)
                 changeset(ctx)
                 return ctx;
             } else {
@@ -61,13 +69,17 @@ function sync(uri, database, revpath, tg_revision) {
         .reverse()
 
         // TODO remove
-        console.log(upgrades)
-        console.log(downgrades)
+        //console.log(upgrades)
+        //console.log(downgrades)
 
         // Do all upgrades first from version 0 to "n" or "current version"
         upgrades.forEach(function (ctx) {
+            var message = "Processed upgrade to [" + ctx.name + "]"
+
             if (ctx.func_up)
                 ctx.func_up(storage)
+            
+            console.log(message.green)
         })
 
 
@@ -75,8 +87,12 @@ function sync(uri, database, revpath, tg_revision) {
         // we can't simply go to the final revision as we have to track
         // which design could have to be deleted
         downgrades.forEach(function (ctx) {
+            var message = "Processed downgrade to [" + ctx.name + "]"
+
             if (ctx.func_down)
                 ctx.func_down(storage)
+
+            console.log(message.green)
         })
 
         function insertDoc(doc) {
@@ -90,11 +106,27 @@ function sync(uri, database, revpath, tg_revision) {
                 if (docs) {
                     obj._rev = docs._rev;
                     projects.insert(obj, obj._id, function (err, body, head) {
-                        console.log("Updated: " + obj._id)
+                        var message = ""
+                        if (!err) {
+                            message = "Updated: " + obj._id
+                            console.log(message.green)
+                        } else {
+                            message = "Could not update object with _id:" +
+                            console.log(message.red)
+                        }
                     })
                 } else {
                     projects.insert(obj, obj._id, function (err, body, head) {
-                        console.log("Inserted: " + obj._id)
+                        var message = ""
+
+                        if (!err) {
+                            message = "Inserted: " + obj._id
+                            console.log(message.green)
+                        } else {
+                            message = "Could not insert object with _id: " + 
+                                      obj._id
+                            console.log(message.red)
+                        }
                     })
                 }
             })
@@ -117,8 +149,14 @@ function sync(uri, database, revpath, tg_revision) {
                     }
 
                     projects.insert(obj, doc._id, function (err, body, head) {
-                        console.log("Deleted: " + doc._id); 
+                        var message = "Deleted: " + doc._id
+                        console.log(message.green)
                     })
+                } else {
+                    var message = "Could not delete document with _id: " + 
+                                  "_design/" + val
+
+                    console.log(message.red)
                 }
             })
         })
@@ -130,7 +168,7 @@ function sync(uri, database, revpath, tg_revision) {
             revision: target_revision
         }, "dbconfig")
 
-        console.log("Database should be synced with your code... anytime")
+        console.log("Database should be synced with your code... anytime".blue)
 
         //console.log(storage)
     })
