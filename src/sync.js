@@ -22,6 +22,13 @@ function sync(uri, database, revpath, tg_revision) {
 
     projects.get("dbconfig", function (err, data) {
         // console.log(target_revision)
+        //
+        if (data == null) {
+            data = {
+                revision: undefined
+            }
+        }
+
 
         var revisions = fs.readdirSync(revpath).sort() 
             , target_revision = tg_revision || revisions.slice(-1)[0]
@@ -44,7 +51,7 @@ function sync(uri, database, revpath, tg_revision) {
         // console.log(revisions)
 
         upgrades = revisions.map(function (path, index) {
-            if (index <= revision_index) {
+            if (index <= target_revision_index) {
                 var ctx = new Context(path)
                 changeset = require(npath.resolve(revpath) + "/" + path)
                 changeset(ctx)
