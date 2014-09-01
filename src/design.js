@@ -32,6 +32,9 @@ Design.prototype.toObject = function () {
         views: this.views
     };
 
+    if (this.validate_doc_update)
+        obj.validate_doc_update = this.validate_doc_update
+
     return obj;
 };
 
