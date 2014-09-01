@@ -72,15 +72,17 @@ Design.prototype.removeView = function (name) {
 Design.prototype.removeValidateDocUpdate = function () {
     /* remove validate doc update function of the design
      */
+    delete this.validate_doc_update
 
-    return this;
+    return this
 };
 
 Design.prototype.setValidateDocUpdate = function (func) {
     /* set validate doc update function of the design
      */
+    this.validate_doc_update = func.toString()
 
-    return this;
+    return this
 };
 
 module.exports = Design;
