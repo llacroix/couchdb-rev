@@ -173,9 +173,13 @@ function sync(uri, database, revpath, tg_revision) {
             _id: "dbconfig",
             _rev: data._rev,
             revision: target_revision
-        }, "dbconfig")
-
-        console.log("Database should be synced with your code... anytime".blue)
+        }, "dbconfig", function (err, doc, head) {
+          if (!err) {
+            console.log("Database should be synced with your code... anytime".blue)
+          } else {
+            console.log("Could not sync database object... ".red)
+          }
+        })
 
         //console.log(storage)
     })
