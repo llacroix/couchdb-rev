@@ -65,7 +65,7 @@ Design.prototype.toObject = function () {
     obj.filters = parseFunc(self, "filters");
   }
 
-  if (Object.keys(self.filters).length > 0) {
+  if (Object.keys(self.updates).length > 0) {
     obj.updates = parseFunc(self, "updates");
   }
 
