@@ -11,7 +11,8 @@
    , "url" : "http://blog.vosnax.ru"
    , "main": "./index.js"
    , "bin": {"cdbr": "./bin/cdbr.js"}
-   , "version": "0.0.8"
+   , "version": "0.0.9"
+   , "license": "MIT"
    , "dependencies" : {
         "yargs": "1.3.x"
         , "nano": "5.10.x"
